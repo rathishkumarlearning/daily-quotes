@@ -13,9 +13,11 @@ export interface Quote {
 }
 
 import { quotes as batch1 } from './quotes-batch-1';
+import { quotes as batch2 } from './quotes-batch-2';
 
 export const quotes: Quote[] = [
   ...batch1,
+  ...batch2,
 ];
 
 export const categories: string[] = [...new Set(quotes.map(q => q.category))];
