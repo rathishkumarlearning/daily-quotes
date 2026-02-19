@@ -1,73 +1,62 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-export type NarrationState = 'idle' | 'playing' | 'paused';
+export type NarrationState = 'idle' | 'loading' | 'playing' | 'paused';
 
-export function useNarration() {
+export function useNarration(slug: string) {
   const [state, setState] = useState<NarrationState>('idle');
-  const [supported, setSupported] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Cleanup on slug change or unmount
   useEffect(() => {
-    setSupported('speechSynthesis' in window);
-    // Clean up on unmount
     return () => {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+      setState('idle');
     };
-  }, []);
+  }, [slug]);
 
-  const speak = useCallback((text: string, author: string) => {
-    if (!('speechSynthesis' in window)) return;
+  const play = useCallback(() => {
+    const audio = new Audio(`/daily-quotes/audio/${slug}.mp3`);
+    audioRef.current = audio;
 
-    window.speechSynthesis.cancel();
+    setState('loading');
 
-    const fullText = `${text}. — ${author}`;
-    const utterance = new SpeechSynthesisUtterance(fullText);
+    audio.oncanplaythrough = () => {
+      audio.play();
+      setState('playing');
+    };
 
-    // Pick a good voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v =>
-      v.name.includes('Samantha') ||
-      v.name.includes('Daniel') ||
-      v.name.includes('Google US English') ||
-      v.name.includes('Karen') ||
-      v.name.includes('Alex')
-    ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+    audio.onended = () => setState('idle');
+    audio.onerror = () => setState('idle');
 
-    if (preferred) utterance.voice = preferred;
-
-    utterance.rate = 0.92;
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-
-    utterance.onstart = () => setState('playing');
-    utterance.onpause = () => setState('paused');
-    utterance.onresume = () => setState('playing');
-    utterance.onend = () => setState('idle');
-    utterance.onerror = () => setState('idle');
-
-    window.speechSynthesis.speak(utterance);
-    setState('playing');
-  }, []);
+    audio.load();
+  }, [slug]);
 
   const pause = useCallback(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.pause();
-      setState('paused');
-    }
+    audioRef.current?.pause();
+    setState('paused');
   }, []);
 
   const resume = useCallback(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.resume();
-      setState('playing');
-    }
+    audioRef.current?.play();
+    setState('playing');
   }, []);
 
   const stop = useCallback(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setState('idle');
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
+    setState('idle');
   }, []);
 
-  return { state, supported, speak, pause, resume, stop };
+  const toggle = useCallback(() => {
+    if (state === 'idle') play();
+    else if (state === 'playing') pause();
+    else if (state === 'paused') resume();
+  }, [state, play, pause, resume]);
+
+  return { state, toggle, stop };
 }
