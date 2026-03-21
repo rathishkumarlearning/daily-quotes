@@ -17,6 +17,7 @@ import { quotes as batch2 } from './quotes-batch-2';
 import { quotes as batch3 } from './quotes-batch-3';
 import { quotes as batch4 } from './quotes-batch-4';
 import { quotes as batch5 } from './quotes-batch-5';
+import { quotes as batch6 } from './quotes-batch-6';
 
 export const quotes: Quote[] = [
   ...batch1,
@@ -24,6 +25,7 @@ export const quotes: Quote[] = [
   ...batch3,
   ...batch4,
   ...batch5,
+  ...batch6,
 ];
 
 export const categories: string[] = [...new Set(quotes.map(q => q.category))];
